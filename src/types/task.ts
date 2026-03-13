@@ -6,5 +6,6 @@ export type Task = {
   description?: string;
   status: TaskStatus;
   priority?: "low" | "medium" | "high";
-  createdAt: number;
+  createdAt: string;
+  updatedAt: string;
 };
