@@ -28,12 +28,7 @@ export function useTaskStore() {
       toast.info("Your data was migrated to a newer format.", { duration: 5000 });
     }
   }, []);
-
-//   const persist = useCallback((updated: Task[]) => {
-//     setTasks(updated);
-//     saveTasks(updated);
-//   }, []);
-
+  
   const addTask = useCallback(
     (data: Omit<Task, "id" | "createdAt" | "updatedAt">) => {
       const now = new Date().toISOString();

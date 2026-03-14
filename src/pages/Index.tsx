@@ -1,10 +1,12 @@
 import { useState, useCallback, useMemo } from "react";
 import { type Task, type TaskStatus, STATUSES } from "../types/task";
 import { useTaskStore } from "../hooks/useTaskStore";
+import {useFilters} from "../hooks/useFilters"
 import BoardColumn from "../components/board/BoardColumn";
 import TaskFormModal from "../components/board/TaskFormModal";
 import { Button } from "../components/ui/button";
 import { Plus, LayoutGrid } from "lucide-react";
+import FilterBar from "../components/board/FilterBar";
 import {
   DndContext,
   DragOverlay,
@@ -21,6 +23,8 @@ import TaskCard from "../components/board/TaskCard";
 const Index = () => {
   const { tasks, addTask, updateTask, deleteTask, moveTask, storageAvailable } =
     useTaskStore();
+  const { filters, setFilters, resetFilters, filteredTasks, hasActiveFilters } =
+    useFilters(tasks);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -76,7 +80,7 @@ const Index = () => {
         targetStatus = over.id as TaskStatus;
       } else {
         // Dropped over another task — find which column that task is in
-        const overTask = tasks.find((t) => t.id === over.id);
+        const overTask = filteredTasks.find((t) => t.id === over.id);
         if (overTask) targetStatus = overTask.status;
       }
 
@@ -87,11 +91,11 @@ const Index = () => {
         }
       }
     },
-    [tasks, moveTask]
+    [filteredTasks, tasks, moveTask]
   );
 
   const handleDragOver = useCallback((_event: DragOverEvent) => {
-    console.log("Drag over", _event);
+    console.log(_event)
     // Could add preview logic here
   }, []);
 
@@ -101,13 +105,13 @@ const Index = () => {
       "in-progress": [],
       done: [],
     };
-    tasks?.forEach((t) => {
+    filteredTasks.forEach((t) => {
       grouped[t.status].push(t);
     });
     return grouped;
-  }, [tasks]);
+  }, [filteredTasks]);
 
-  const totalCount = tasks?.length;
+  const totalCount = tasks.length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -122,6 +126,7 @@ const Index = () => {
               <h1 className="text-lg font-bold text-foreground leading-tight">Workflow Board</h1>
               <p className="text-xs text-muted-foreground">
                 {totalCount} task{totalCount !== 1 ? "s" : ""}
+                {hasActiveFilters && ` · ${filteredTasks.length} shown`}
               </p>
             </div>
           </div>
@@ -138,6 +143,15 @@ const Index = () => {
         </div>
       )}
 
+      <div className="container max-w-7xl mx-auto px-4 py-3">
+        <FilterBar
+          filters={filters}
+          onChange={setFilters}
+          onReset={resetFilters}
+          hasActive={hasActiveFilters}
+        />
+      </div>
+
       <main className="container max-w-7xl mx-auto px-4 pb-8">
         {totalCount === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -151,6 +165,16 @@ const Index = () => {
             <Button onClick={handleCreate}>
               <Plus className="h-4 w-4 mr-1" />
               Create Task
+            </Button>
+          </div>
+        ) : hasActiveFilters && filteredTasks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <h2 className="text-lg font-semibold text-foreground mb-1">No matching tasks</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Try adjusting your filters
+            </p>
+            <Button variant="outline" onClick={resetFilters}>
+              Clear Filters
             </Button>
           </div>
         ) : (
