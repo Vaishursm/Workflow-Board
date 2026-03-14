@@ -41,12 +41,26 @@ export function isStorageAvailable(): boolean {
   }
 }
 
+const OLD_STORAGE_KEY = "workflow_tasks";
+
 export function loadTasks(): { tasks: Task[]; migrated: boolean } {
   if (!isStorageAvailable()) {
     return { tasks: [], migrated: false };
   }
 
   try {
+    // Check for old storage key first
+    const oldRaw = localStorage.getItem(OLD_STORAGE_KEY);
+    if (oldRaw) {
+      const oldParsed = JSON.parse(oldRaw);
+      if (Array.isArray(oldParsed)) {
+        const migrated = migrateV1ToV2(oldParsed);
+        saveTasks(migrated);
+        localStorage.removeItem(OLD_STORAGE_KEY); // Clean up old key
+        return { tasks: migrated, migrated: true };
+      }
+    }
+
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { tasks: [], migrated: false };
 
