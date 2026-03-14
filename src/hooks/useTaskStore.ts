@@ -1,10 +1,38 @@
-import { useState, useCallback } from "react";
-import type { Task } from "../types/task";
+import { useState, useCallback, useEffect, useRef } from "react";
+import type { Task, TaskStatus } from "../types/task";
+import { loadTasks, saveTasks, isStorageAvailable } from "../lib/storage";
 import { toast } from "sonner";
-
 
 export function useTaskStore() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [storageAvailable, setStorageAvailable] = useState(true);
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
+    const available = isStorageAvailable();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStorageAvailable(available);
+
+    if (!available) {
+      toast.error("Local storage is unavailable. Changes won't be persisted.");
+      return;
+    }
+
+    const { tasks: loaded, migrated } = loadTasks();
+    setTasks(loaded);
+
+    if (migrated) {
+      toast.info("Your data was migrated to a newer format.", { duration: 5000 });
+    }
+  }, []);
+
+//   const persist = useCallback((updated: Task[]) => {
+//     setTasks(updated);
+//     saveTasks(updated);
+//   }, []);
 
   const addTask = useCallback(
     (data: Omit<Task, "id" | "createdAt" | "updatedAt">) => {
@@ -17,7 +45,7 @@ export function useTaskStore() {
       };
       setTasks((prev) => {
         const next = [task, ...prev];
-        // saveTasks(next);
+        saveTasks(next);
         return next;
       });
       toast.success("Task created");
@@ -32,7 +60,7 @@ export function useTaskStore() {
         const next = prev.map((t) =>
           t.id === id ? { ...t, ...data, updatedAt: new Date().toISOString() } : t
         );
-        // saveTasks(next);
+        saveTasks(next);
         return next;
       });
       toast.success("Task updated");
@@ -43,11 +71,21 @@ export function useTaskStore() {
   const deleteTask = useCallback((id: string) => {
     setTasks((prev) => {
       const next = prev.filter((t) => t.id !== id);
-    //   saveTasks(next);
+      saveTasks(next);
       return next;
     });
     toast.success("Task deleted");
   }, []);
 
-  return { tasks, addTask, updateTask, deleteTask };
+  const moveTask = useCallback((id: string, status: TaskStatus) => {
+    setTasks((prev) => {
+      const next = prev.map((t) =>
+        t.id === id ? { ...t, status, updatedAt: new Date().toISOString() } : t
+      );
+      saveTasks(next);
+      return next;
+    });
+  }, []);
+
+  return { tasks, addTask, updateTask, deleteTask, moveTask, storageAvailable };
 }
