@@ -9,8 +9,8 @@ export interface Task {
   priority: TaskPriority;
   assignee: string;
   tags: string[];
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date | number | string;
+  updatedAt: Date | number | string;
 }
 
 export type SortField = "createdAt" | "updatedAt" | "priority";
